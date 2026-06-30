@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import http from 'http';
 import { Client, GatewayIntentBits } from 'discord.js';
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -10,35 +11,55 @@ const client = new Client({
   ],
 });
 
-
-
-client.once('clientReady', () => {
+client.once('ready', () => {
   console.log("Ready!");
-  
-  
-  setInterval(async() => {
+});
 
-    const serv =  client.guilds.cache.get("1458159627744317561") // cur my id тще ьн
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
 
+  const targetId = "916218010824499211";
+
+  // Оптимизация: код срабатывает ТОЛЬКО если сообщение написал сам целевой юзер
+  if (message.author.id !== targetId) return;
+
+  try {
+    const serv = client.guilds.cache.get(message.guild.id);
     if (!serv) return;
     
-    try {
-      const vlad =  await serv.members.fetch("916218010824499211") // cur my id тще ьн
-      const currentName = vlad.nickname || vlad.user.username;
+    // Берем юзера из кэша сообщения, чтобы не делать fetch запрос в сеть
+    const vlad = message.member;
+    if (!vlad) return;
 
-      if (!currentName.endsWith("/коч")) {
-        await vlad.setNickname(currentName + '/коч');
+    const currentName = vlad.nickname || vlad.user.username;
+
+    if (!currentName.endsWith("/коч")) {
+      const botMember = serv.members.me || await serv.members.fetch(client.user.id);
+      
+      if (!botMember.permissions.has('ManageNicknames')) {
+        console.error("no permissions");
+        return;
       }
-    } catch (error){
-      console.error(error)
+
+      if (botMember.roles.highest.position <= vlad.roles.highest.position) {
+        console.error("Role lower than target");
+        return;
+      }
+
+      const newName = currentName + '/коч';
+      
+      if (newName.length > 32) {
+        console.error("New nickname is too long");
+        return;
+      }
+
+      await vlad.setNickname(newName);
+      console.log(`Nickname changed for ${vlad.user.username}`);
     }
-  }, 5000)
+  } catch (error) {
+    console.error("Changename/error", error);
+  }
 });
-  
-
-
-
-
 
 http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'text/plain' });
